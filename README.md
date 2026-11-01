@@ -4,7 +4,9 @@
 
 Автор: Александр Смирнов.
 
-Репозиторий: [smirnov-dev-frontend/bad-server](https://github.com/smirnov-dev-frontend/bad-server).
+Репозиторий:
+
+https://github.com/smirnov-dev-frontend/bad-server
 
 ## Запуск в Docker
 
