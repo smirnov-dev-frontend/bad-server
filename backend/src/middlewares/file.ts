@@ -1,56 +1,35 @@
-import { Request, Express } from 'express'
-import multer, { FileFilterCallback } from 'multer'
+import { randomUUID } from 'crypto'
 import { mkdirSync } from 'fs'
-import { join } from 'path'
-
-type DestinationCallback = (error: Error | null, destination: string) => void
-type FileNameCallback = (error: Error | null, filename: string) => void
+import multer from 'multer'
+import BadRequestError from '../errors/bad-request-error'
+import { TEMP_ROOT } from '../utils/files'
 
 const storage = multer.diskStorage({
-    destination: (
-        _req: Request,
-        _file: Express.Multer.File,
-        cb: DestinationCallback
-    ) => {
-        const destinationPath = join(
-            __dirname,
-            process.env.UPLOAD_PATH_TEMP
-                ? `../public/${process.env.UPLOAD_PATH_TEMP}`
-                : '../public'
-        )
-
-        mkdirSync(destinationPath, { recursive: true })
-
-        cb(null, destinationPath)
+    destination: (_req, _file, cb) => {
+        mkdirSync(TEMP_ROOT, { recursive: true })
+        cb(null, TEMP_ROOT)
     },
-
-    filename: (
-        _req: Request,
-        file: Express.Multer.File,
-        cb: FileNameCallback
-    ) => {
-        cb(null, file.originalname)
-    },
+    filename: (_req, _file, cb) => cb(null, `${randomUUID()}.upload`),
 })
 
-const types = [
-    'image/png',
-    'image/jpg',
-    'image/jpeg',
-    'image/gif',
-    'image/svg+xml',
-]
-
-const fileFilter = (
-    _req: Request,
-    file: Express.Multer.File,
-    cb: FileFilterCallback
-) => {
-    if (!types.includes(file.mimetype)) {
-        return cb(null, false)
-    }
-
-    return cb(null, true)
-}
-
-export default multer({ storage, fileFilter })
+export default multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 0, parts: 1 },
+    fileFilter: (_req, file, cb) => {
+        if (
+            ![
+                'image/png',
+                'image/jpeg',
+                'image/jpg',
+                'image/gif',
+                'image/webp',
+            ].includes(file.mimetype)
+        ) {
+            return cb(new BadRequestError('Недопустимый формат изображения'))
+        }
+        if (Buffer.byteLength(file.originalname) > 255) {
+            return cb(new BadRequestError('Слишком длинное имя файла'))
+        }
+        return cb(null, true)
+    },
+})
