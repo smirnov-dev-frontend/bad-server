@@ -1,14 +1,14 @@
-export interface Column {
+import { ReactNode } from 'react'
+
+export interface Column<T> {
     title: string
     dataIndex: string
     key: string
     extraClassHeaderCell?: string
     extraClassTableCell?: string
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    render?: (row: any) => JSX.Element
+    render?: (row: T) => ReactNode
 }
 
 export interface DataRow {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    [key: string]: any // Для поддержки любых дополнительных полей
+    key: string
 }

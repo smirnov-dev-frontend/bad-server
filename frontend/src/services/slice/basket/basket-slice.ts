@@ -14,7 +14,7 @@ export const basketSlice = createSlice({
         addProductCart: (state, { payload }: PayloadAction<IProduct>) => {
             const itemInCart = state.items.find(
                 (item) => item._id === payload._id
-            ) //undefined or product
+            )
             if (itemInCart) {
                 return state
             } else {
@@ -25,8 +25,8 @@ export const basketSlice = createSlice({
         removeProductCart: (state, action: PayloadAction<string>) => {
             state.items = state.items.filter((item) => {
                 return item._id !== action.payload
-            });
-            state.totalCount = state.totalCount - 1;
+            })
+            state.totalCount = state.totalCount - 1
         },
         resetBasket: () => initialState,
     },

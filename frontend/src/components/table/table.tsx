@@ -3,18 +3,22 @@ import { ReactNode } from 'react'
 import { Column, DataRow } from './helpers/types'
 import styles from './table.module.scss'
 
-interface TableChildrenProps {
-    rowData: DataRow
-    columnsData: Column[]
+interface TableChildrenProps<T> {
+    rowData: T
+    columnsData: Column<T>[]
 }
 
-interface TableProps {
-    columns: Column[]
-    data: DataRow[]
-    children: (props: TableChildrenProps) => ReactNode
+interface TableProps<T> {
+    columns: Column<T>[]
+    data: T[]
+    children: (props: TableChildrenProps<T>) => ReactNode
 }
 
-const Table = ({ columns, data, children }: TableProps) => {
+const Table = <T extends DataRow>({
+    columns,
+    data,
+    children,
+}: TableProps<T>) => {
     return (
         <div className={styles.table}>
             <div className={styles.table__header}>

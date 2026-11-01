@@ -71,7 +71,7 @@ export default function AdminEditProduct() {
                 title: currentProduct.title,
             })
         }
-    }, [currentProduct])
+    }, [currentProduct, setValuesForm])
 
     const handleUpdateProduct = async () => {
         if (!selectedCategory) {
@@ -84,11 +84,11 @@ export default function AdminEditProduct() {
             price: values.price ? values.price : null,
         }
 
-        editId &&
-            updateProduct({ data: dataProduct, id: editId })
-                .unwrap()
-                .then(() => navigateAdminList())
-                .catch((error) => toast.error(error.message))
+        if (!editId) return
+        updateProduct({ data: dataProduct, id: editId })
+            .unwrap()
+            .then(() => navigateAdminList())
+            .catch((error) => toast.error(error.message))
     }
     const handleFormSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -96,11 +96,11 @@ export default function AdminEditProduct() {
     }
 
     const handleDeleteProduct = () => {
-        editId &&
-            deleteProduct(editId)
-                .unwrap()
-                .then(() => navigateAdminList())
-                .catch((error) => toast.error(error.message))
+        if (!editId) return
+        deleteProduct(editId)
+            .unwrap()
+            .then(() => navigateAdminList())
+            .catch((error) => toast.error(error.message))
     }
 
     return (
@@ -150,7 +150,7 @@ export default function AdminEditProduct() {
                 extraClass={styles.admin__file}
                 inputRef={fileRef}
                 label='Заменить изображение'
-                accept='image/*,.png,.jpeg,.jpg,.svg'
+                accept='image/png,image/jpeg,image/gif,image/webp'
                 fileName={currentProduct?.image.originalName}
             />
             <div className={styles.admin__buttons}>

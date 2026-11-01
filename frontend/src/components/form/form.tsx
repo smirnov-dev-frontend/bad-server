@@ -31,7 +31,10 @@ export default function Form({
             className={clsx(styles.form, {
                 [extraClass as string]: !!extraClass,
             })}
-            onSubmit={handleFormSubmit}
+            onSubmit={(event) => {
+                event.preventDefault()
+                handleFormSubmit?.(event)
+            }}
             {...props}
         >
             {children}

@@ -2,12 +2,15 @@ import clsx from 'clsx'
 import { Column, DataRow } from './helpers/types'
 import styles from './table.module.scss'
 
-interface TableRowProps {
-    rowData: DataRow
-    columnsData: Column[]
+interface TableRowProps<T> {
+    rowData: T
+    columnsData: Column<T>[]
 }
 
-export default function TableRow({ columnsData, rowData }: TableRowProps) {
+export default function TableRow<T extends DataRow>({
+    columnsData,
+    rowData,
+}: TableRowProps<T>) {
     return (
         <div className={styles.table__row}>
             {columnsData.map((column) => {
@@ -22,7 +25,12 @@ export default function TableRow({ columnsData, rowData }: TableRowProps) {
                     >
                         {column.render
                             ? column.render(rowData)
-                            : rowData[column.dataIndex].title}
+                            : (
+                                  Object.entries(rowData).find(
+                                      ([key]) => key === column.dataIndex
+                                  )?.[1] as
+                                      { title?: React.ReactNode } | undefined
+                              )?.title}
                     </div>
                 )
             })}

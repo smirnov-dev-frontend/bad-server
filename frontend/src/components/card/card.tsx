@@ -71,21 +71,23 @@ export default function Card({
                     {price && full && (
                         <Button
                             onClick={() => {
-                                isBasket
-                                    ? navigate(
-                                          { pathname: AppRoute.Basket },
-                                          {
-                                              state: {
-                                                  background: {
-                                                      ...location,
-                                                      pathname: '/',
-                                                      state: null,
-                                                  },
-                                              },
-                                              replace: true,
-                                          }
-                                      )
-                                    : addProductCart(dataCard)
+                                if (isBasket) {
+                                    navigate(
+                                        { pathname: AppRoute.Basket },
+                                        {
+                                            state: {
+                                                background: {
+                                                    ...location,
+                                                    pathname: '/',
+                                                    state: null,
+                                                },
+                                            },
+                                            replace: true,
+                                        }
+                                    )
+                                } else {
+                                    addProductCart(dataCard)
+                                }
                             }}
                         >
                             {!isBasket ? 'В корзину' : 'В корзине'}

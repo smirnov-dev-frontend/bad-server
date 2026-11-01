@@ -14,7 +14,7 @@ export function OrderSuccess() {
         <div className={styles.order__success}>
             <h2 className={styles.order__title}>Заказ оформлен</h2>
             <p className={styles.order__description}>
-                Списано {orderResponse?.total} синапсов
+                Списано {orderResponse?.totalAmount} синапсов
             </p>
             <Button component={Link} to={{ pathname: AppRoute.Main }} replace>
                 За новыми покупками!

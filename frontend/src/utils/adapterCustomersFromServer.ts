@@ -40,7 +40,6 @@ export function adapterCustomersFromServer(
                   (product) => product.title
               )
             : [],
-        /** Не используется в таблице */
         name: {
             title: customerFromServer.name,
             value: customerFromServer.name,
