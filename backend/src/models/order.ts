@@ -1,4 +1,3 @@
-/* eslint-disable prefer-arrow-callback */
 import mongoose, { Document, Schema, Types } from 'mongoose'
 import validator from 'validator'
 import { PaymentType, phoneRegExp } from '../middlewares/validations'
@@ -47,7 +46,7 @@ const orderSchema: Schema = new Schema(
             required: true,
         },
         customer: { type: Types.ObjectId, ref: 'user' },
-        deliveryAddress: { type: String },
+        deliveryAddress: { type: String, maxlength: 500 },
         email: {
             type: String,
             required: [true, 'Поле "email" должно быть заполнено'],
@@ -67,6 +66,7 @@ const orderSchema: Schema = new Schema(
         comment: {
             type: String,
             default: '',
+            maxlength: 5000,
         },
     },
     { versionKey: false, timestamps: true }
@@ -89,16 +89,18 @@ orderSchema.pre('save', async function incrementOrderNumber(next) {
 })
 
 orderSchema.post('save', async function updateUserStats(doc) {
-    await User.findById(doc.customer).then(function updateUser(user) {
-        user?.orders.push(doc.id)
-        user?.calculateOrderStats()
+    const user = await User.findByIdAndUpdate(doc.customer, {
+        $addToSet: { orders: doc._id },
     })
+    await user?.calculateOrderStats()
 })
 
 orderSchema.post('findOneAndDelete', async function updateUserStats(order) {
-    await User.findByIdAndUpdate(order.customer, {
+    if (!order) return
+    const user = await User.findByIdAndUpdate(order.customer, {
         $pull: { orders: order._id },
-    }).then((user) => user?.calculateOrderStats())
+    })
+    await user?.calculateOrderStats()
 })
 
 export default mongoose.model<IOrder>('order', orderSchema)

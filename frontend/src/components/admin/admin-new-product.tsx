@@ -119,7 +119,7 @@ export default function AdminNewProduct() {
                 extraClass={styles.admin__file}
                 inputRef={fileRef}
                 label='Загрузить изображение'
-                accept='image/*,.png,.jpeg,.jpg,.svg'
+                accept='image/png,image/jpeg,image/gif,image/webp'
             />
             <Button
                 type='submit'

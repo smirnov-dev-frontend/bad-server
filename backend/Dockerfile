@@ -4,4 +4,5 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-CMD ["npm", "run", "dev"]
+RUN npm run build
+CMD ["npm", "start"]

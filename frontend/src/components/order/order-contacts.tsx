@@ -33,12 +33,11 @@ export function OrderContacts() {
         )
 
     useEffect(() => {
-        // восстанавливаем значение формы из стора
         setValuesForm({
             email: orderPersistData.email,
             phone: orderPersistData.phone,
         })
-    }, [orderPersistData])
+    }, [orderPersistData, setValuesForm])
 
     const handleEditInputChange = (value: string) => {
         setValuesForm({ ...values, comment: value })
@@ -47,7 +46,6 @@ export function OrderContacts() {
     const handleFormSubmit = (e: SyntheticEvent<HTMLFormElement>) => {
         e.preventDefault()
         setInfo(values)
-        // т.к. на момент отправки запроса данные введенные в поля еще не записаны в store, добавляем в запрос их вручную
         createOrder({ ...orderPersistData, ...values })
             .unwrap()
             .then((dataResponse) => {

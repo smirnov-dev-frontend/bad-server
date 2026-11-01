@@ -23,7 +23,12 @@ export default function useFormWithValidation<T>(
 
     const handleChange = (evt: ChangeEvent<HTMLInputElement>) => {
         const input = evt.target
-        const value = input.value
+        const value =
+            input.type === 'number'
+                ? input.value === ''
+                    ? null
+                    : input.valueAsNumber
+                : input.value
         const name = input.name
         setValues({ ...values, [name]: value })
         setErrors({ ...errors, [name]: input.validationMessage })
@@ -39,12 +44,9 @@ export default function useFormWithValidation<T>(
         [setValues, setErrors, setIsValid, defaultValue]
     )
 
-    const setValuesForm = useCallback(
-        (data: Partial<T>) => {
-            setValues({ ...values, ...data })
-        },
-        [values]
-    )
+    const setValuesForm = useCallback((data: Partial<T>) => {
+        setValues((current) => ({ ...current, ...data }))
+    }, [])
 
     useEffect(() => {
         setIsValid(!!(form && form.checkValidity()))

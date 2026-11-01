@@ -8,29 +8,51 @@ import {
     getOrdersCurrentUser,
     updateOrder,
 } from '../controllers/order'
-import auth, { roleGuardMiddleware } from '../middlewares/auth'
-import { validateOrderBody } from '../middlewares/validations'
+import { roleGuardMiddleware } from '../middlewares/auth'
+import {
+    validateOrderBody,
+    validateOrderUpdateBody,
+    validateOrderNumber,
+    validateId,
+    validateOrdersQuery,
+    validateUserOrdersQuery,
+} from '../middlewares/validations'
 import { Role } from '../models/user'
 
 const orderRouter = Router()
 
-orderRouter.post('/', auth, validateOrderBody, createOrder)
-orderRouter.get('/all', auth, getOrders)
-orderRouter.get('/all/me', auth, getOrdersCurrentUser)
+orderRouter.post('/', validateOrderBody, createOrder)
+orderRouter.get(
+    '/all',
+    roleGuardMiddleware(Role.Admin),
+    validateOrdersQuery,
+    getOrders
+)
+orderRouter.get('/all/me', validateUserOrdersQuery, getOrdersCurrentUser)
 orderRouter.get(
     '/:orderNumber',
-    auth,
+    validateOrderNumber,
     roleGuardMiddleware(Role.Admin),
     getOrderByNumber
 )
-orderRouter.get('/me/:orderNumber', auth, getOrderCurrentUserByNumber)
+orderRouter.get(
+    '/me/:orderNumber',
+    validateOrderNumber,
+    getOrderCurrentUserByNumber
+)
 orderRouter.patch(
     '/:orderNumber',
-    auth,
+    validateOrderNumber,
     roleGuardMiddleware(Role.Admin),
+    validateOrderUpdateBody,
     updateOrder
 )
 
-orderRouter.delete('/:id', auth, roleGuardMiddleware(Role.Admin), deleteOrder)
+orderRouter.delete(
+    '/:id',
+    validateId,
+    roleGuardMiddleware(Role.Admin),
+    deleteOrder
+)
 
 export default orderRouter

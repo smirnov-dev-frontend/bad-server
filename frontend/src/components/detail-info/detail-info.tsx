@@ -1,33 +1,27 @@
 import clsx from 'clsx'
 import React from 'react'
 import styles from './detail-info.module.scss'
-export interface DataItem {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    [key: string]: any
-}
-
-interface Header {
+interface Header<T> {
     key: string
     label: string
     extraClass?: string
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    render?: (data: any) => JSX.Element
+    render?: (data: T) => React.ReactNode
 }
 
-interface DetailInfoProps {
+interface DetailInfoProps<T> {
     header: string
     subheader: string
-    data: DataItem
-    headers: Header[]
+    data: T
+    headers: Header<T>[]
     actions: React.ComponentType[]
 }
-export default function DetailInfo({
+export default function DetailInfo<T extends object>({
     header,
     subheader,
     data,
     headers,
     actions,
-}: DetailInfoProps) {
+}: DetailInfoProps<T>) {
     return (
         <div className={styles.detailInfo}>
             <h1 className={styles.detailInfo__title}>{header}</h1>
@@ -50,7 +44,11 @@ export default function DetailInfo({
                                 header.render(data)
                             ) : (
                                 <span className={styles.detailInfo__itemValue}>
-                                    {data[header.key]}{' '}
+                                    {
+                                        Object.entries(data).find(
+                                            ([key]) => key === header.key
+                                        )?.[1] as React.ReactNode
+                                    }{' '}
                                 </span>
                             )}
                         </div>

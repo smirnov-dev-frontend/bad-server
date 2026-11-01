@@ -7,18 +7,23 @@ import NotFoundError from '../errors/not-found-error'
 import UnauthorizedError from '../errors/unauthorized-error'
 import UserModel, { Role } from '../models/user'
 
-// есть файл middlewares/auth.js, в нём мидлвэр для проверки JWT;
-
 const auth = async (req: Request, res: Response, next: NextFunction) => {
-    let payload: JwtPayload | null = null
     const authHeader = req.header('Authorization')
     if (!authHeader?.startsWith('Bearer ')) {
-        throw new UnauthorizedError('Невалидный токен')
+        return next(new UnauthorizedError('Невалидный токен'))
     }
     try {
         const accessTokenParts = authHeader.split(' ')
         const aTkn = accessTokenParts[1]
-        payload = jwt.verify(aTkn, ACCESS_TOKEN.secret) as JwtPayload
+        const payload = jwt.verify(aTkn, ACCESS_TOKEN.secret, {
+            algorithms: ['HS256'],
+        }) as JwtPayload
+        if (
+            typeof payload.sub !== 'string' ||
+            !Types.ObjectId.isValid(payload.sub)
+        ) {
+            return next(new UnauthorizedError('Невалидный токен'))
+        }
 
         const user = await UserModel.findOne(
             {
@@ -75,19 +80,23 @@ export function currentUserAccessMiddleware<T>(
             return next()
         }
 
-        const entity = await model.findById(id)
+        try {
+            const entity = await model.findById(id)
 
-        if (!entity) {
-            return next(new NotFoundError('Не найдено'))
-        }
+            if (!entity) {
+                return next(new NotFoundError('Не найдено'))
+            }
 
-        const userEntityId = entity[userProperty] as Types.ObjectId
-        const hasAccess = new Types.ObjectId(res.locals.user.id).equals(
-            userEntityId
-        )
+            const userEntityId = entity[userProperty] as Types.ObjectId
+            const hasAccess = new Types.ObjectId(res.locals.user.id).equals(
+                userEntityId
+            )
 
-        if (!hasAccess) {
-            return next(new ForbiddenError('Доступ запрещен'))
+            if (!hasAccess) {
+                return next(new ForbiddenError('Доступ запрещен'))
+            }
+        } catch (error) {
+            return next(error)
         }
 
         return next()

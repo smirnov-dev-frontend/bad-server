@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
     ActionCreatorsMapObject,
-    AsyncThunk,
     bindActionCreators,
     createAsyncThunk as createThunkHook,
 } from '@reduxjs/toolkit'
@@ -28,15 +26,16 @@ export const useActionCreators = <Actions extends ActionCreatorsMapObject>(
 ): BoundActions<Actions> => {
     const dispatch = useDispatch()
 
-    return useMemo(() => bindActionCreators(actions, dispatch), [])
+    return useMemo(
+        () => bindActionCreators(actions, dispatch) as BoundActions<Actions>,
+        [actions, dispatch]
+    )
 }
 
 export type BoundActions<Actions extends ActionCreatorsMapObject> = {
-    [key in keyof Actions]: Actions[key] extends AsyncThunk<any, any, any>
-        ? BoundAsyncThunk<Actions[key]>
-        : Actions[key]
+    [Key in keyof Actions]: Actions[Key] extends (
+        ...args: infer Args
+    ) => (...args: never[]) => infer Result
+        ? (...args: Args) => Result
+        : Actions[Key]
 }
-
-export type BoundAsyncThunk<Thunk extends AsyncThunk<any, any, any>> = (
-    ...args: Parameters<Thunk>
-) => ReturnType<ReturnType<Thunk>>

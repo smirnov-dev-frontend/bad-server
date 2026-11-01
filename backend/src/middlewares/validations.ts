@@ -1,135 +1,217 @@
 import { Joi, celebrate } from 'celebrate'
-import { Types } from 'mongoose'
+import sanitizeHtml from 'sanitize-html'
 
-// eslint-disable-next-line no-useless-escape
-export const phoneRegExp = /^(\+\d+)?(?:\s|-?|\(?\d+\)?)+$/
+export const phoneRegExp = /^\+?[0-9][0-9 ()-]{5,24}$/
 
 export enum PaymentType {
     Card = 'card',
     Online = 'online',
 }
 
-// валидация id
-export const validateOrderBody = celebrate({
-    body: Joi.object().keys({
+const text = (max: number) =>
+    Joi.string()
+        .max(max)
+        .custom((value: string) =>
+            sanitizeHtml(value, { allowedTags: [], allowedAttributes: {} })
+        )
+const email = Joi.string().email().max(254)
+const password = Joi.string()
+    .min(6)
+    .max(72)
+    .custom((value: string, helpers) =>
+        Buffer.byteLength(value) <= 72
+            ? value
+            : helpers.error('string.max', { limit: 72 })
+    )
+const objectId = Joi.string().hex().length(24)
+const phone = Joi.string().max(26).pattern(phoneRegExp)
+const image = Joi.object({
+    fileName: Joi.string()
+        .max(150)
+        .pattern(/^\/images\/[a-z0-9_-]+\.(png|jpe?g|gif)$/i)
+        .required(),
+    originalName: text(255).required(),
+}).unknown(false)
+const productFields = {
+    title: text(30).min(2),
+    image,
+    category: Joi.string().valid(
+        'софт-скил',
+        'хард-скил',
+        'другое',
+        'дополнительное',
+        'кнопка'
+    ),
+    description: text(5000),
+    price: Joi.number().min(0).max(1000000000).allow(null),
+}
+const profileFields = {
+    name: text(30).min(2),
+    email,
+    phone,
+}
+const body = (schema: Joi.ObjectSchema) =>
+    celebrate({ body: schema }, { convert: false, abortEarly: false })
+
+export const validateOrderBody = body(
+    Joi.object({
         items: Joi.array()
-            .items(
-                Joi.string().custom((value, helpers) => {
-                    if (Types.ObjectId.isValid(value)) {
-                        return value
-                    }
-                    return helpers.message({ custom: 'Невалидный id' })
-                })
-            )
-            .messages({
-                'array.empty': 'Не указаны товары',
-            }),
+            .items(objectId.required())
+            .min(1)
+            .max(100)
+            .unique()
+            .required(),
         payment: Joi.string()
             .valid(...Object.values(PaymentType))
-            .required()
-            .messages({
-                'string.valid':
-                    'Указано не валидное значение для способа оплаты, возможные значения - "card", "online"',
-                'string.empty': 'Не указан способ оплаты',
-            }),
-        email: Joi.string().email().required().messages({
-            'string.empty': 'Не указан email',
-        }),
-        phone: Joi.string().required().pattern(phoneRegExp).messages({
-            'string.empty': 'Не указан телефон',
-        }),
-        address: Joi.string().required().messages({
-            'string.empty': 'Не указан адрес',
-        }),
-        total: Joi.number().required().messages({
-            'string.empty': 'Не указана сумма заказа',
-        }),
-        comment: Joi.string().optional().allow(''),
-    }),
-})
+            .required(),
+        email: email.required(),
+        phone: phone.required(),
+        address: text(500).required(),
+        total: Joi.number().min(0).max(1000000000).required(),
+        comment: Joi.string()
+            .max(5000)
+            .allow('')
+            .custom((value: string) =>
+                sanitizeHtml(value, {
+                    allowedTags: [
+                        'a',
+                        'b',
+                        'strong',
+                        'i',
+                        'em',
+                        'u',
+                        'p',
+                        'br',
+                        'div',
+                        'span',
+                        'ul',
+                        'ol',
+                        'li',
+                    ],
+                    allowedAttributes: { a: ['href', 'title'] },
+                    allowedSchemes: ['http', 'https'],
+                    allowProtocolRelative: false,
+                })
+            ),
+    }).unknown(false)
+)
 
-// валидация товара.
-// name и link - обязательные поля, name - от 2 до 30 символов, link - валидный url
-export const validateProductBody = celebrate({
-    body: Joi.object().keys({
-        title: Joi.string().required().min(2).max(30).messages({
-            'string.min': 'Минимальная длина поля "name" - 2',
-            'string.max': 'Максимальная длина поля "name" - 30',
-            'string.empty': 'Поле "title" должно быть заполнено',
-        }),
-        image: Joi.object().keys({
-            fileName: Joi.string().required(),
-            originalName: Joi.string().required(),
-        }),
-        category: Joi.string().required().messages({
-            'string.empty': 'Поле "category" должно быть заполнено',
-        }),
-        description: Joi.string().required().messages({
-            'string.empty': 'Поле "description" должно быть заполнено',
-        }),
-        price: Joi.number().allow(null),
-    }),
-})
-
-export const validateProductUpdateBody = celebrate({
-    body: Joi.object().keys({
-        title: Joi.string().min(2).max(30).messages({
-            'string.min': 'Минимальная длина поля "name" - 2',
-            'string.max': 'Максимальная длина поля "name" - 30',
-        }),
-        image: Joi.object().keys({
-            fileName: Joi.string().required(),
-            originalName: Joi.string().required(),
-        }),
-        category: Joi.string(),
-        description: Joi.string(),
-        price: Joi.number().allow(null),
-    }),
-})
+export const validateProductBody = body(
+    Joi.object(productFields)
+        .fork(['title', 'image', 'category', 'description'], (field) =>
+            field.required()
+        )
+        .unknown(false)
+)
+export const validateProductUpdateBody = body(
+    Joi.object(productFields).min(1).unknown(false)
+)
+export const validateUserBody = body(
+    Joi.object({
+        name: profileFields.name,
+        email: email.required(),
+        password: password.required(),
+    }).unknown(false)
+)
+export const validateAuthentication = body(
+    Joi.object({
+        email: email.required(),
+        password: password.required(),
+    }).unknown(false)
+)
+export const validateProfileBody = body(
+    Joi.object(profileFields).min(1).unknown(false)
+)
+export const validateOrderUpdateBody = body(
+    Joi.object({
+        status: Joi.string()
+            .valid('new', 'delivering', 'completed', 'cancelled')
+            .required(),
+    }).unknown(false)
+)
 
 export const validateObjId = celebrate({
-    params: Joi.object().keys({
-        productId: Joi.string()
-            .required()
-            .custom((value, helpers) => {
-                if (Types.ObjectId.isValid(value)) {
-                    return value
-                }
-                return helpers.message({ any: 'Невалидный id' })
-            }),
+    params: Joi.object({ productId: objectId.required() }),
+})
+export const validateId = celebrate({
+    params: Joi.object({ id: objectId.required() }),
+})
+export const validateOrderNumber = celebrate({
+    params: Joi.object({
+        orderNumber: Joi.number()
+            .integer()
+            .min(1)
+            .max(Number.MAX_SAFE_INTEGER)
+            .required(),
     }),
 })
 
-export const validateUserBody = celebrate({
-    body: Joi.object().keys({
-        name: Joi.string().min(2).max(30).messages({
-            'string.min': 'Минимальная длина поля "name" - 2',
-            'string.max': 'Максимальная длина поля "name" - 30',
-        }),
-        password: Joi.string().min(6).required().messages({
-            'string.empty': 'Поле "password" должно быть заполнено',
-        }),
-        email: Joi.string()
-            .required()
-            .email()
-            .message('Поле "email" должно быть валидным email-адресом')
-            .messages({
-                'string.empty': 'Поле "email" должно быть заполнено',
-            }),
-    }),
+const pagination = {
+    page: Joi.number().integer().min(1).max(10000),
+    limit: Joi.number()
+        .integer()
+        .min(1)
+        .max(1000000)
+        .custom((value: number) => Math.min(value, 100)),
+}
+const smallPagination = {
+    ...pagination,
+    limit: Joi.number()
+        .integer()
+        .min(1)
+        .max(1000000)
+        .custom((value: number) => Math.min(value, 10)),
+}
+const search = Joi.string().max(100).allow('')
+const amount = Joi.number().min(0).max(1000000000).empty('')
+const date = Joi.date().iso().empty('')
+const sorting = (fields: string[]) => ({
+    sortField: Joi.string().valid(...fields),
+    sortOrder: Joi.string().valid('asc', 'desc'),
 })
 
-export const validateAuthentication = celebrate({
-    body: Joi.object().keys({
-        email: Joi.string()
-            .required()
-            .email()
-            .message('Поле "email" должно быть валидным email-адресом')
-            .messages({
-                'string.required': 'Поле "email" должно быть заполнено',
-            }),
-        password: Joi.string().required().messages({
-            'string.empty': 'Поле "password" должно быть заполнено',
-        }),
-    }),
+export const validateProductQuery = celebrate({
+    query: Joi.object(pagination).unknown(false),
+})
+export const validateUserOrdersQuery = celebrate({
+    query: Joi.object({ ...smallPagination, search }).unknown(false),
+})
+export const validateOrdersQuery = celebrate({
+    query: Joi.object({
+        ...smallPagination,
+        ...sorting(['createdAt', 'orderNumber', 'totalAmount', 'status']),
+        search,
+        status: Joi.string().valid(
+            '',
+            'new',
+            'delivering',
+            'completed',
+            'cancelled'
+        ),
+        totalAmountFrom: amount,
+        totalAmountTo: amount,
+        orderDateFrom: date,
+        orderDateTo: date,
+    }).unknown(false),
+})
+export const validateCustomersQuery = celebrate({
+    query: Joi.object({
+        ...smallPagination,
+        ...sorting([
+            'createdAt',
+            'name',
+            'totalAmount',
+            'orderCount',
+            'lastOrderDate',
+        ]),
+        search,
+        registrationDateFrom: date,
+        registrationDateTo: date,
+        lastOrderDateFrom: date,
+        lastOrderDateTo: date,
+        totalAmountFrom: amount,
+        totalAmountTo: amount,
+        orderCountFrom: amount.integer(),
+        orderCountTo: amount.integer(),
+    }).unknown(false),
 })

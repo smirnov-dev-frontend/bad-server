@@ -35,7 +35,7 @@ export function OrderAddress() {
             address: orderPersistData.address,
             payment: PaymentType.Online,
         })
-    }, [orderPersistData])
+    }, [orderPersistData, setValuesForm])
 
     const nextStep = () => {
         setInfo(values)
@@ -50,7 +50,7 @@ export function OrderAddress() {
     }
 
     return (
-        <Form formRef={formRef}>
+        <Form formRef={formRef} handleFormSubmit={nextStep}>
             <div className={styles.order__field}>
                 <div className={styles.order__buttons}>
                     <Radio
@@ -87,7 +87,7 @@ export function OrderAddress() {
                 error={errors.address}
             />
             <div className={styles.order__buttons}>
-                <Button type='submit' onClick={nextStep} disabled={!isValid}>
+                <Button type='submit' disabled={!isValid}>
                     Далее
                 </Button>
             </div>
