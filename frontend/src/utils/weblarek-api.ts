@@ -37,6 +37,7 @@ class Api {
     constructor(baseUrl: string, options: RequestInit = {}) {
         this.baseUrl = baseUrl
         this.options = {
+            ...options,
             headers: {
                 ...((options.headers as object) ?? {}),
             },
@@ -53,23 +54,61 @@ class Api {
                   )
     }
 
-    protected async request<T>(endpoint: string, options: RequestInit) {
-        try {
-            const res = await fetch(`${this.baseUrl}${endpoint}`, {
-                ...this.options,
-                ...options,
+    private csrfToken: Promise<string> | undefined
+    private refreshRequest: Promise<UserResponseToken> | undefined
+
+    private getCsrfToken() {
+        if (!this.csrfToken) {
+            this.csrfToken = fetch(`${this.baseUrl}/auth/csrf-token`, {
+                credentials: 'include',
             })
-            return await this.handleResponse<T>(res)
-        } catch (error) {
-            return Promise.reject(error)
+                .then((response) =>
+                    this.handleResponse<{ csrfToken: string }>(response)
+                )
+                .then((data) => data.csrfToken)
+                .catch((error: unknown) => {
+                    this.csrfToken = undefined
+                    throw error
+                })
         }
+        return this.csrfToken
+    }
+
+    protected async request<T>(
+        endpoint: string,
+        options: RequestInit
+    ): Promise<T> {
+        const headers = new Headers(this.options.headers)
+        new Headers(options.headers).forEach((value, key) =>
+            headers.set(key, value)
+        )
+        if (!['GET', 'HEAD', 'OPTIONS'].includes(options.method || 'GET')) {
+            headers.set('X-CSRF-Token', await this.getCsrfToken())
+        }
+        const res = await fetch(`${this.baseUrl}${endpoint}`, {
+            ...this.options,
+            ...options,
+            headers,
+            credentials: 'include',
+        })
+        return this.handleResponse<T>(res)
     }
 
     private refreshToken = () => {
-        return this.request<UserResponseToken>('/auth/token', {
-            method: 'GET',
-            credentials: 'include',
-        })
+        if (!this.refreshRequest) {
+            this.refreshRequest = this.request<UserResponseToken>(
+                '/auth/token',
+                { method: 'POST' }
+            )
+                .then((data) => {
+                    setCookie('accessToken', data.accessToken)
+                    return data
+                })
+                .finally(() => {
+                    this.refreshRequest = undefined
+                })
+        }
+        return this.refreshRequest
     }
 
     protected requestWithRefresh = async <T>(
@@ -79,18 +118,18 @@ class Api {
         try {
             return await this.request<T>(endpoint, options)
         } catch (error) {
-            const refreshData = await this.refreshToken()
-            if (!refreshData.success) {
-                return Promise.reject(refreshData)
+            if (
+                !error ||
+                typeof error !== 'object' ||
+                !('statusCode' in error) ||
+                error.statusCode !== 401
+            ) {
+                throw error
             }
-            setCookie('accessToken', refreshData.accessToken)
-            return await this.request<T>(endpoint, {
-                ...options,
-                headers: {
-                    ...options.headers,
-                    Authorization: `Bearer ${getCookie('accessToken')}`,
-                },
-            })
+            await this.refreshToken()
+            const headers = new Headers(options.headers)
+            headers.set('Authorization', `Bearer ${getCookie('accessToken')}`)
+            return this.request<T>(endpoint, { ...options, headers })
         }
     }
 }
@@ -293,13 +332,12 @@ export class WebLarekAPI extends Api implements IWebLarekAPI {
 
     logoutUser = () => {
         return this.request<ServerResponse<unknown>>('/auth/logout', {
-            method: 'GET',
+            method: 'POST',
             credentials: 'include',
         })
     }
 
     createProduct = (data: Omit<IProduct, '_id'>) => {
-        console.log(data)
         return this.requestWithRefresh<IProduct>('/product', {
             method: 'POST',
             body: JSON.stringify(data),

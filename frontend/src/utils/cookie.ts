@@ -1,13 +1,9 @@
 export function getCookie(name: string) {
-    const matches = document.cookie.match(
-        new RegExp(
-            '(?:^|; )' +
-                // eslint-disable-next-line no-useless-escape
-                name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') +
-                '=([^;]*)'
-        )
-    )
-    return matches ? decodeURIComponent(matches[1]) : undefined
+    const prefix = `${encodeURIComponent(name)}=`
+    const cookie = document.cookie
+        .split('; ')
+        .find((value) => value.startsWith(prefix))
+    return cookie ? decodeURIComponent(cookie.slice(prefix.length)) : undefined
 }
 
 export function setCookie(
@@ -17,6 +13,8 @@ export function setCookie(
 ) {
     props = {
         path: '/',
+        SameSite: 'Lax',
+        ...(location.protocol === 'https:' ? { Secure: true } : {}),
         ...props,
     }
 
