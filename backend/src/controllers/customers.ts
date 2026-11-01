@@ -3,10 +3,8 @@ import { FilterQuery } from 'mongoose'
 import NotFoundError from '../errors/not-found-error'
 import Order from '../models/order'
 import User, { IUser } from '../models/user'
+import escapeRegExp from '../utils/escapeRegExp'
 
-// TODO: Добавить guard admin
-// eslint-disable-next-line max-len
-// Get GET /customers?page=2&limit=5&sort=totalAmount&order=desc&registrationDateFrom=2023-01-01&registrationDateTo=2023-12-31&lastOrderDateFrom=2023-01-01&lastOrderDateTo=2023-12-31&totalAmountFrom=100&totalAmountTo=1000&orderCountFrom=1&orderCountTo=10
 export const getCustomers = async (
     req: Request,
     res: Response,
@@ -34,12 +32,12 @@ export const getCustomers = async (
         if (registrationDateFrom) {
             filters.createdAt = {
                 ...filters.createdAt,
-                $gte: new Date(registrationDateFrom as string),
+                $gte: new Date(String(registrationDateFrom)),
             }
         }
 
         if (registrationDateTo) {
-            const endOfDay = new Date(registrationDateTo as string)
+            const endOfDay = new Date(String(registrationDateTo))
             endOfDay.setHours(23, 59, 59, 999)
             filters.createdAt = {
                 ...filters.createdAt,
@@ -50,12 +48,12 @@ export const getCustomers = async (
         if (lastOrderDateFrom) {
             filters.lastOrderDate = {
                 ...filters.lastOrderDate,
-                $gte: new Date(lastOrderDateFrom as string),
+                $gte: new Date(String(lastOrderDateFrom)),
             }
         }
 
         if (lastOrderDateTo) {
-            const endOfDay = new Date(lastOrderDateTo as string)
+            const endOfDay = new Date(String(lastOrderDateTo))
             endOfDay.setHours(23, 59, 59, 999)
             filters.lastOrderDate = {
                 ...filters.lastOrderDate,
@@ -92,7 +90,7 @@ export const getCustomers = async (
         }
 
         if (search) {
-            const searchRegex = new RegExp(search as string, 'i')
+            const searchRegex = new RegExp(escapeRegExp(search as string), 'i')
             const orders = await Order.find(
                 {
                     $or: [{ deliveryAddress: searchRegex }],
@@ -108,7 +106,7 @@ export const getCustomers = async (
             ]
         }
 
-        const sort: { [key: string]: any } = {}
+        const sort: Record<string, 1 | -1> = {}
 
         if (sortField && sortOrder) {
             sort[sortField as string] = sortOrder === 'desc' ? -1 : 1
@@ -153,8 +151,6 @@ export const getCustomers = async (
     }
 }
 
-// TODO: Добавить guard admin
-// Get /customers/:id
 export const getCustomerById = async (
     req: Request,
     res: Response,
@@ -171,20 +167,22 @@ export const getCustomerById = async (
     }
 }
 
-// TODO: Добавить guard admin
-// Patch /customers/:id
 export const updateCustomer = async (
     req: Request,
     res: Response,
     next: NextFunction
 ) => {
     try {
+        const { name, email, phone } = req.body
+        const fields = Object.fromEntries(
+            Object.entries({ name, email, phone }).filter(
+                ([, value]) => value !== undefined
+            )
+        )
         const updatedUser = await User.findByIdAndUpdate(
             req.params.id,
-            req.body,
-            {
-                new: true,
-            }
+            { $set: fields },
+            { new: true, runValidators: true }
         )
             .orFail(
                 () =>
@@ -199,8 +197,6 @@ export const updateCustomer = async (
     }
 }
 
-// TODO: Добавить guard admin
-// Delete /customers/:id
 export const deleteCustomer = async (
     req: Request,
     res: Response,
